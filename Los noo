@@ -1,0 +1,496 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+
+local Window = Rayfield:CreateWindow({
+   Name = "Xbox compatible script",
+   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "Loading everything up...",
+   LoadingSubtitle = "by Rovo1",
+   ShowText = "Rovo1's script", -- for mobile users to unhide rayfield, change if you'd like
+   Theme = "Default", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+
+   ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "Script"
+   },
+
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
+
+   KeySystem = false, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided", -- Use this to tell the user how to get a key
+      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"Hello"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
+
+
+local MenuTab = Window:CreateTab("Menu", nil) -- Title, Image
+local MenuSection = MenuTab:CreateSection("Player")
+
+
+local Slider = MenuTab:CreateSlider({
+   Name = "Walkspeed",
+   Range = {0, 300},
+   Increment = 1,
+   Suffix = "Speed",
+   CurrentValue = 16,
+   Flag = "Slider1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+   Callback = function(Value)
+			game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = (Value)
+   end,
+})
+
+local Button = MenuTab:CreateButton({
+   Name = "Fly press Y",
+   Callback = function()
+			local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local root = character:WaitForChild("HumanoidRootPart")
+local camera = workspace.CurrentCamera
+
+local flying = false
+local speed = 70
+
+local bodyVelocity
+local bodyGyro
+
+local moveInput = Vector2.zero
+
+local function startFly()
+	bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	bodyVelocity.Parent = root
+
+	bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	bodyGyro.Parent = root
+
+	humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+end
+
+local function stopFly()
+	if bodyVelocity then bodyVelocity:Destroy() end
+	if bodyGyro then bodyGyro:Destroy() end
+	humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.ButtonY then
+		flying = not flying
+		if flying then
+			startFly()
+		else
+			stopFly()
+		end
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.Thumbstick1 then
+		moveInput = input.Position
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if not flying then return end
+
+	local camCF = camera.CFrame
+	local forward = camCF.LookVector
+	local right = camCF.RightVector
+
+	local move =
+		(forward * moveInput.Y) +
+		(right * moveInput.X)
+
+	if move.Magnitude > 1 then
+		move = move.Unit
+	end
+
+	bodyVelocity.Velocity = move * speed
+	bodyGyro.CFrame = camCF
+end)
+   end,
+})
+
+local Button = MenuTab:CreateButton({
+   Name = "teleport dpad up to toggle L2 to teleport",
+   Callback = function()
+			local Players = game:GetService("Players")
+local ContextActionService = game:GetService("ContextActionService")
+
+local player = Players.LocalPlayer
+
+local savedCFrame = nil
+local hasSaved = false
+
+local function getRoot()
+	local character = player.Character
+	if not character then return nil end
+	return character:FindFirstChild("HumanoidRootPart")
+end
+
+local function onR3(actionName, inputState)
+	if inputState ~= Enum.UserInputState.Begin then return end
+
+	local root = getRoot()
+	if not root then return end
+
+	if not hasSaved then
+		savedCFrame = root.CFrame
+		hasSaved = true
+	else
+		root.CFrame = savedCFrame
+		savedCFrame = nil
+		hasSaved = false
+	end
+end
+
+ContextActionService:BindAction(
+	"SaveTeleport",
+	onR3,
+	false,
+	Enum.KeyCode.ButtonR3
+)
+
+player.CharacterAdded:Connect(function()
+	savedCFrame = nil
+	hasSaved = false
+end)
+   end,
+})
+
+local Button = MenuTab:CreateButton({
+   Name = "B to noclip",
+   Callback = function()
+			local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local noclip = false
+local conn
+
+local function set(state)
+	local char = player.Character
+	if not char then return end
+	for _, v in ipairs(char:GetDescendants()) do
+		if v:IsA("BasePart") then
+			v.CanCollide = not state
+		end
+	end
+end
+
+local function start()
+	conn = RunService.Stepped:Connect(function()
+		set(true)
+	end)
+end
+
+local function stop()
+	if conn then conn:Disconnect() conn = nil end
+	set(false)
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.ButtonB then
+		noclip = not noclip
+		if noclip then start() else stop() end
+	end
+end)
+   end,
+})
+
+local Button = MenuTab:CreateButton({
+   Name = "dpad right to save position and dpad right to teleport there whenever you want to",
+   Callback = function()
+			local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+local savedCFrame = nil
+local hasSaved = false
+
+local function getRoot()
+	local character = player.Character
+	if not character then return nil end
+	return character:FindFirstChild("HumanoidRootPart")
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+
+	if input.KeyCode == Enum.KeyCode.DPadRight then
+		local root = getRoot()
+		if not root then return end
+
+		if not hasSaved then
+			savedCFrame = root.CFrame
+			hasSaved = true
+		else
+			root.CFrame = savedCFrame
+			savedCFrame = nil
+			hasSaved = false
+		end
+	end
+end)
+
+player.CharacterAdded:Connect(function()
+	savedCFrame = nil
+	hasSaved = false
+end) 
+   end,
+})
+
+local Button = MenuTab:CreateButton({
+   Name = "dpad left to X-Ray and dpad left to un X-Ray",
+   Callback = function()
+			local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local toggle = false
+
+local wallParts = {}
+local originalTransparency = {}
+local highlights = {}
+
+local function toggleXRay()
+	toggle = not toggle
+
+	if toggle then
+		for _, part in pairs(Workspace:GetDescendants()) do
+			if part:IsA("BasePart") and not part:IsDescendantOf(player.Character) and not part:FindFirstChildOfClass("Humanoid") then
+				originalTransparency[part] = part.Transparency
+				part.Transparency = 0.5
+				wallParts[part] = true
+			end
+		end
+
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				if not highlights[p] then
+					local h = Instance.new("Highlight")
+					h.Adornee = p.Character
+					h.FillColor = Color3.fromRGB(255, 255, 255)
+					h.FillTransparency = 0.5
+					h.OutlineColor = Color3.fromRGB(255, 255, 255)
+					h.OutlineTransparency = 0
+					h.Parent = Workspace
+					highlights[p] = h
+				end
+			end
+		end
+	else
+		for part, _ in pairs(wallParts) do
+			if part and part.Parent then
+				part.Transparency = originalTransparency[part] or 0
+			end
+		end
+		wallParts = {}
+		originalTransparency = {}
+
+		for _, h in pairs(highlights) do
+			h:Destroy()
+		end
+		highlights = {}
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.DPadLeft then
+		toggleXRay()
+	end
+end)
+
+player.CharacterAdded:Connect(function()
+	for _, h in pairs(highlights) do h:Destroy() end
+	highlights = {}
+	for part, _ in pairs(wallParts) do
+		if part and part.Parent then
+			part.Transparency = originalTransparency[part] or 0
+		end
+	end
+	wallParts = {}
+	originalTransparency = {}
+end)
+   end,
+})
+
+local Button = MenuTab:CreateButton({
+   Name = "if you are playing piggy and you are piggy click this then click dpad down and see what happens",
+   Callback = function()
+			local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+local function getRoot(plr)
+	local c = plr.Character
+	if c then
+		return c:FindFirstChild("HumanoidRootPart")
+	end
+	return nil
+end
+
+local function teleportToNearest()
+	local character = player.Character
+	if not character then return end
+	local root = getRoot(player)
+	if not root then return end
+
+	local nearestPlayer
+	local nearestDistance = math.huge
+
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= player and p.Character then
+			local targetRoot = getRoot(p)
+			if targetRoot then
+				local distance = (targetRoot.Position - root.Position).Magnitude
+				if distance < nearestDistance then
+					nearestDistance = distance
+					nearestPlayer = targetRoot
+				end
+			end
+		end
+	end
+
+	if nearestPlayer then
+		local lookVector = nearestPlayer.CFrame.LookVector
+		local offset = lookVector * -5 -- teleport in front (5 studs away from player)
+		root.CFrame = CFrame.new(nearestPlayer.Position + offset, nearestPlayer.Position)
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.DPadDown then
+		teleportToNearest()
+	end
+end)
+   end,
+})
+
+local Button = MenuTab:CreateButton({
+   Name = "Show what you have on or off",
+   Callback = function()
+			local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local gui = Instance.new("ScreenGui")
+gui.Name = "AbilityUI"
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.fromScale(0.25, 0.4)
+frame.Position = UDim2.fromScale(0.02, 0.3)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BackgroundTransparency = 0.1
+frame.BorderSizePixel = 0
+frame.UIStroke = Instance.new("UIStroke", frame)
+frame.UIStroke.Color = Color3.fromRGB(255, 255, 255)
+
+local layout = Instance.new("UIListLayout", frame)
+layout.Padding = UDim.new(0, 6)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "ABILITIES"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+
+local abilities = {
+	Fly = {keys = "Y / F", active = false},
+	Noclip = {keys = "B / N", active = false},
+	Blink = {keys = "DPad Up / T", active = false},
+	XRay = {keys = "DPad Left / V", active = false},
+	Recall = {keys = "DPad Right / R", active = false},
+	TPNearest = {keys = "DPad Down / C", active = false}
+}
+
+local labels = {}
+
+local function makeLabel(name)
+	local l = Instance.new("TextLabel", frame)
+	l.Size = UDim2.new(1, -10, 0, 28)
+	l.BackgroundTransparency = 1
+	l.TextXAlignment = Left
+	l.Font = Enum.Font.Gotham
+	l.TextSize = 14
+	labels[name] = l
+end
+
+for name in pairs(abilities) do
+	makeLabel(name)
+end
+
+local function refresh()
+	for name, data in pairs(abilities) do
+		local status = data.active and "ON" or "OFF"
+		labels[name].Text =
+			name .. " [" .. data.keys .. "] : " .. status
+		labels[name].TextColor3 =
+			data.active and Color3.fromRGB(0,255,0) or Color3.fromRGB(255,100,100)
+	end
+end
+
+refresh()
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+
+	if input.KeyCode == Enum.KeyCode.ButtonY or input.KeyCode == Enum.KeyCode.F then
+		abilities.Fly.active = not abilities.Fly.active
+	end
+
+	if input.KeyCode == Enum.KeyCode.ButtonB or input.KeyCode == Enum.KeyCode.N then
+		abilities.Noclip.active = not abilities.Noclip.active
+	end
+
+	if input.KeyCode == Enum.KeyCode.DPadUp or input.KeyCode == Enum.KeyCode.T then
+		abilities.Blink.active = not abilities.Blink.active
+	end
+
+	if input.KeyCode == Enum.KeyCode.DPadLeft or input.KeyCode == Enum.KeyCode.V then
+		abilities.XRay.active = not abilities.XRay.active
+	end
+
+	if input.KeyCode == Enum.KeyCode.DPadRight or input.KeyCode == Enum.KeyCode.R then
+		abilities.Recall.active = not abilities.Recall.active
+	end
+
+	if input.KeyCode == Enum.KeyCode.DPadDown or input.KeyCode == Enum.KeyCode.C then
+		abilities.TPNearest.active = true
+	end
+
+	refresh()
+end)
+   end,
+})
